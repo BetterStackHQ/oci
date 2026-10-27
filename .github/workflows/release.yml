@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region_key: [lhr]
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Check the stack pins this version
+        run: grep -q 'forwarder_version = "${{ steps.version.outputs.version }}"' main.tf
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ matrix.region_key }}.ocir.io
+          username: ${{ secrets.OCIR_USERNAME }}
+          password: ${{ secrets.OCIR_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: forwarder
+          platforms: linux/amd64,linux/arm64
+          provenance: false
+          sbom: false
+          push: true
+          tags: ${{ matrix.region_key }}.ocir.io/lr3km3hvmrwp/betterstack/oci-forwarder:${{ steps.version.outputs.version }}
+
+  stack:
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: zip betterstack-oci.zip main.tf variables.tf schema.yaml
+      - run: gh release create "$GITHUB_REF_NAME" betterstack-oci.zip --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

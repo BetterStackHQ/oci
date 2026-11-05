@@ -29,7 +29,7 @@ variableGroups:
 variables:
   betterstack_ingesting_host:
     title: Ingesting host
-    description: Shown on your source's Configure page, for example s1234.eu-nbg-2.betterstackdata.com.
+    description: Shown on your source's Ingest tab, for example s1234.eu-nbg-2.betterstackdata.com.
     type: string
     required: true
 

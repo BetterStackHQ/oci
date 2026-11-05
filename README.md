@@ -10,7 +10,7 @@ Better Stack never connects to your tenancy. Data only leaves through the Functi
 
 ## Quick start
 
-[Create a new Oracle Cloud source in Better Stack](https://telemetry.betterstack.com/team/t0/sources/new?platform=oci). The source-creation flow hands you a **Deploy to Oracle Cloud** link with every stack variable pre-filled. Click it, review the variables, and click **Create**.
+[Create a new Oracle Cloud source in Better Stack](https://telemetry.betterstack.com/team/0/sources/new?platform=oracle_cloud). Its **Ingest** tab has a **Deploy to Oracle Cloud** button that opens this stack in Resource Manager. Paste the source's **Ingesting host** and **Source token** into the stack form, make sure **Run apply** is selected, and click **Create**.
 
 Sign in to your tenancy's **home region** as a user who can create compartments and policies in the root compartment. The stack forwards metrics and logs from the home region.
 

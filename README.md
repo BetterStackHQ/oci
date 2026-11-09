@@ -25,7 +25,7 @@ The stack looks up which compartments have metrics in the selected namespaces wh
 
 ## Uninstall
 
-Go to **Developer Services → Resource Manager → Stacks**, select the Better Stack stack, and click **Destroy**.
+Go to **Developer Services → Resource Manager → Stacks**, select the Better Stack stack, and click **Destroy**. It takes about 15 minutes, most of it deleting the `betterstack` compartment.
 
 ## License
 

@@ -73,9 +73,3 @@ variable "log_group_ids" {
   default     = ""
   description = "Log group OCIDs to forward logs from, separated by commas or new lines."
 }
-
-variable "forwarder_image" {
-  type        = string
-  default     = ""
-  description = "Overrides the forwarder image Better Stack publishes in your region."
-}

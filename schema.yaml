@@ -17,9 +17,6 @@ variableGroups:
     variables:
       - ${forward_audit_logs}
       - ${log_group_ids}
-  - title: Advanced
-    variables:
-      - ${forwarder_image}
   - title: Hidden
     visible: false
     variables:
@@ -118,10 +115,4 @@ variables:
     description: Log group OCIDs to forward, separated by commas or new lines.
     type: text
     multiline: true
-    required: false
-
-  forwarder_image:
-    title: Forwarder image
-    description: Leave empty to use the image Better Stack publishes in your region.
-    type: string
     required: false

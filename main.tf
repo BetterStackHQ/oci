@@ -14,10 +14,6 @@ provider "oci" {
 }
 
 locals {
-  forwarder_version = "0.1.0"
-
-  # Better Stack publishes the forwarder to a public repository in every region it supports.
-  forwarder_image = coalesce(var.forwarder_image, "${lower(data.oci_identity_regions.current.regions[0].key)}.ocir.io/lr3km3hvmrwp/betterstack/oci-forwarder:${local.forwarder_version}")
 
   connector_principal = "where all {request.principal.type = 'serviceconnector', request.principal.compartment.id = '${oci_identity_compartment.betterstack.id}'}"
 
@@ -32,13 +28,6 @@ locals {
   metrics_statements = length(local.selected_compartment_ids) > 0 ? [
     for id in local.selected_compartment_ids : "Allow any-user to read metrics in compartment id ${id} ${local.connector_principal}"
   ] : ["Allow any-user to read metrics in tenancy ${local.connector_principal}"]
-}
-
-data "oci_identity_regions" "current" {
-  filter {
-    name   = "name"
-    values = [var.region]
-  }
 }
 
 data "oci_identity_region_subscriptions" "home" {
@@ -145,12 +134,39 @@ resource "oci_functions_application" "betterstack" {
   shape          = "GENERIC_X86_ARM"
 }
 
+# Applying the stack again moves the forwarder to the runtime's current version.
+data "oci_functions_functions_runtimes" "python" {
+  name = "python312.ol9"
+}
+
+data "oci_functions_functions_runtime_versions" "python" {
+  functions_runtime_id = data.oci_functions_functions_runtimes.python.functions_runtime_collection[0].items[0].id
+  is_current_version   = true
+}
+
 resource "oci_functions_function" "forwarder" {
   application_id     = oci_functions_application.betterstack.id
   display_name       = "forwarder"
-  image              = local.forwarder_image
   memory_in_mbs      = 256
   timeout_in_seconds = 300
+
+  # A code-only function: the managed Python runtime ships the Fn SDK, so the
+  # archive holds only function/func.py and no container image is involved.
+  source_details {
+    source_type = "ARCHIVE"
+    handler     = "func.handler"
+
+    archive_source_details {
+      archive_source_type = "DIRECT_ARCHIVE"
+      archive_file        = filebase64("${path.module}/forwarder.zip")
+    }
+
+    runtime_config {
+      runtime_config_type          = "MANUAL"
+      functions_runtime_name       = "python312.ol9"
+      functions_runtime_version_id = data.oci_functions_functions_runtime_versions.python.functions_runtime_version_collection[0].items[0].id
+    }
+  }
 
   config = {
     BETTERSTACK_INGESTING_HOST = local.ingesting_host

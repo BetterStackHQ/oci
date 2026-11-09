@@ -9,6 +9,11 @@ variable "region" {
 variable "betterstack_ingesting_host" {
   type        = string
   description = "Ingesting host of your Better Stack source, without https://."
+
+  validation {
+    condition     = can(regex("^\\s*(https?://)?[A-Za-z0-9.-]+(:[0-9]+)?/?\\s*$", var.betterstack_ingesting_host))
+    error_message = "Use the ingesting host shown on your source's Ingest tab, for example s1234.eu-nbg-2.betterstackdata.com."
+  }
 }
 
 variable "betterstack_source_token" {
@@ -19,7 +24,7 @@ variable "betterstack_source_token" {
 variable "metrics_compartment_ids" {
   type        = string
   default     = ""
-  description = "Comma-separated compartment OCIDs to forward metrics from. Leave empty for every compartment in the tenancy."
+  description = "Compartment OCIDs to forward metrics from, separated by commas or new lines. Leave empty for every compartment in the tenancy."
 }
 
 variable "metrics_namespaces" {
@@ -51,6 +56,11 @@ variable "metrics_namespaces" {
     "oci_waf",
     "oracle_oci_database",
   ]
+
+  validation {
+    condition     = length(var.metrics_namespaces) <= 50
+    error_message = "A connector takes at most 50 metric namespaces."
+  }
 }
 
 variable "forward_audit_logs" {
@@ -61,7 +71,7 @@ variable "forward_audit_logs" {
 variable "log_group_ids" {
   type        = string
   default     = ""
-  description = "Comma-separated log group OCIDs to forward logs from."
+  description = "Log group OCIDs to forward logs from, separated by commas or new lines."
 }
 
 variable "forwarder_image" {

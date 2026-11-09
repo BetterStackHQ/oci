@@ -4,7 +4,7 @@ terraform {
   required_providers {
     oci = {
       source  = "oracle/oci"
-      version = ">= 6.0.0"
+      version = "~> 9.0"
     }
   }
 }
@@ -20,6 +20,18 @@ locals {
   forwarder_image = coalesce(var.forwarder_image, "${lower(data.oci_identity_regions.current.regions[0].key)}.ocir.io/lr3km3hvmrwp/betterstack/oci-forwarder:${local.forwarder_version}")
 
   connector_principal = "where all {request.principal.type = 'serviceconnector', request.principal.compartment.id = '${oci_identity_compartment.betterstack.id}'}"
+
+  # The form asks for the host without a scheme; a pasted URL still works.
+  ingesting_host = trimsuffix(trimprefix(trimprefix(trimspace(var.betterstack_ingesting_host), "https://"), "http://"), "/")
+
+  # OCID fields accept commas, spaces or one OCID per line.
+  selected_compartment_ids = distinct(regexall("[^,\\s]+", var.metrics_compartment_ids))
+  log_group_ids            = distinct(regexall("[^,\\s]+", var.log_group_ids))
+
+  # Metrics are read tenancy-wide only when no compartments are chosen.
+  metrics_statements = length(local.selected_compartment_ids) > 0 ? [
+    for id in local.selected_compartment_ids : "Allow any-user to read metrics in compartment id ${id} ${local.connector_principal}"
+  ] : ["Allow any-user to read metrics in tenancy ${local.connector_principal}"]
 }
 
 data "oci_identity_regions" "current" {
@@ -56,12 +68,11 @@ resource "oci_identity_policy" "connectors" {
   compartment_id = var.tenancy_ocid
   name           = "betterstack-connectors"
   description    = "Lets the Better Stack connectors read metrics and logs and invoke the forwarder"
-  statements = [
-    "Allow any-user to read metrics in tenancy ${local.connector_principal}",
+  statements = concat(local.metrics_statements, [
     "Allow any-user to read log-content in tenancy ${local.connector_principal}",
     "Allow any-user to use fn-function in compartment id ${oci_identity_compartment.betterstack.id} ${local.connector_principal}",
     "Allow any-user to use fn-invocation in compartment id ${oci_identity_compartment.betterstack.id} ${local.connector_principal}",
-  ]
+  ])
 }
 
 # The Function has no public IP, so it reaches Better Stack through a NAT gateway.
@@ -104,8 +115,9 @@ resource "oci_core_security_list" "forwarder" {
     }
   }
 
+  # DNS goes to the VCN resolver only.
   egress_security_rules {
-    destination = "0.0.0.0/0"
+    destination = "169.254.169.254/32"
     protocol    = "17"
 
     udp_options {
@@ -141,7 +153,7 @@ resource "oci_functions_function" "forwarder" {
   timeout_in_seconds = 300
 
   config = {
-    BETTERSTACK_INGESTING_HOST = var.betterstack_ingesting_host
+    BETTERSTACK_INGESTING_HOST = local.ingesting_host
     BETTERSTACK_SOURCE_TOKEN   = var.betterstack_source_token
   }
 }
@@ -156,7 +168,7 @@ data "oci_identity_compartments" "all" {
 }
 
 locals {
-  metrics_compartment_ids = var.metrics_compartment_ids != "" ? [for id in split(",", var.metrics_compartment_ids) : trimspace(id)] : concat(
+  metrics_compartment_ids = length(local.selected_compartment_ids) > 0 ? local.selected_compartment_ids : concat(
     [var.tenancy_ocid],
     [for compartment in data.oci_identity_compartments.all.compartments : compartment.id if compartment.name != "betterstack"],
   )
@@ -177,9 +189,16 @@ locals {
     } if length(setintersection(var.metrics_namespaces, data.oci_monitoring_metrics.namespaces[id].metrics[*].namespace)) > 0
   ]
 
-  # A connector takes at most 5 compartments and 50 namespaces across them.
-  metric_sources_per_connector = min(5, floor(50 / max(1, [for source in local.metric_sources : length(source.namespaces)]...)))
-  metric_connectors            = chunklist(local.metric_sources, local.metric_sources_per_connector)
+  # A connector takes at most 5 compartments and 50 namespaces across them, so
+  # compartments are packed with others that select as many namespaces: one
+  # compartment with many namespaces doesn't shrink every other connector.
+  metric_source_sizes = sort(distinct([for source in local.metric_sources : format("%02d", length(source.namespaces))]))
+  metric_connectors = concat([], [
+    for size in local.metric_source_sizes : chunklist(
+      [for source in local.metric_sources : source if length(source.namespaces) == tonumber(size)],
+      min(5, floor(50 / tonumber(size))),
+    )
+  ]...)
 }
 
 resource "oci_sch_service_connector" "metrics" {
@@ -224,10 +243,6 @@ resource "oci_sch_service_connector" "metrics" {
   }
 
   depends_on = [oci_identity_policy.connectors]
-}
-
-locals {
-  log_group_ids = var.log_group_ids != "" ? [for id in split(",", var.log_group_ids) : trimspace(id)] : []
 }
 
 data "oci_logging_log_group" "selected" {

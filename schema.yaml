@@ -1,7 +1,7 @@
 title: Better Stack
 description: Forward Oracle Cloud metrics and logs to Better Stack.
 schemaVersion: 1.1.0
-version: "20261027"
+version: "20261109"
 locale: en
 
 variableGroups:
@@ -32,6 +32,7 @@ variables:
     description: Shown on your source's Ingest tab, for example s1234.eu-nbg-2.betterstackdata.com.
     type: string
     required: true
+    pattern: "^\\s*(https?://)?[A-Za-z0-9.-]+(:[0-9]+)?/?\\s*$"
 
   betterstack_source_token:
     title: Source token
@@ -41,17 +42,18 @@ variables:
 
   metrics_compartment_ids:
     title: Compartments
-    description: Comma-separated compartment OCIDs to forward metrics from. Leave empty for every compartment.
+    description: Compartment OCIDs to forward metrics from, separated by commas or new lines. Leave empty for every compartment.
     type: text
     multiline: true
     required: false
 
   metrics_namespaces:
     title: Metric namespaces
+    description: Clear the list to forward logs only.
     type: enum
     additionalProps:
       allowMultiple: true
-    required: true
+    required: false
     default:
       - oci_autonomous_database
       - oci_blockstore
@@ -113,7 +115,7 @@ variables:
 
   log_group_ids:
     title: Log groups
-    description: Comma-separated log group OCIDs to forward.
+    description: Log group OCIDs to forward, separated by commas or new lines.
     type: text
     multiline: true
     required: false

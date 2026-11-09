@@ -6,6 +6,16 @@ import urllib.request
 from fdk import response
 
 
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    # Following a redirect turns the POST into a bodyless GET and sends the
+    # token to another host, so a redirect fails the batch instead.
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_opener = urllib.request.build_opener(_NoRedirects)
+
+
 def handler(ctx, data: io.BytesIO = None):
     # Connector Hub retries a batch when the function fails, so a non-2xx
     # response from Better Stack is left to raise.
@@ -19,5 +29,5 @@ def handler(ctx, data: io.BytesIO = None):
         },
         method="POST",
     )
-    urllib.request.urlopen(request, timeout=60)
+    _opener.open(request, timeout=60)
     return response.Response(ctx, response_data="")

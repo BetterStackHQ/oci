@@ -22,6 +22,13 @@ class Ingesting(BaseHTTPRequestHandler):
         body = self.rfile.read(int(self.headers["Content-Length"]))
         Ingesting.received.append((self.path, dict(self.headers), body))
         self.send_response(Ingesting.status)
+        if 300 <= Ingesting.status < 400:
+            self.send_header("Location", "/elsewhere")
+        self.end_headers()
+
+    def do_GET(self):
+        Ingesting.received.append((self.path, dict(self.headers), b""))
+        self.send_response(200)
         self.end_headers()
 
     def log_message(self, *args):
@@ -57,6 +64,13 @@ class HandlerTest(unittest.TestCase):
         self.assertEqual("Bearer token", headers["Authorization"])
         self.assertEqual("gzip", headers["Content-Encoding"])
         self.assertEqual(b'[{"namespace":"oci_faas"}]', gzip.decompress(body))
+
+    def test_raises_on_a_redirect_instead_of_following_it(self):
+        Ingesting.status = 301
+
+        with self.assertRaises(urllib.error.HTTPError):
+            func.handler(None, io.BytesIO(b"[]"))
+        self.assertEqual(1, len(Ingesting.received))
 
     def test_raises_on_a_rejected_batch_so_connector_hub_retries(self):
         Ingesting.status = 500

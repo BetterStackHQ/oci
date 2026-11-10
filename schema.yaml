@@ -1,7 +1,10 @@
 title: Better Stack
 description: Forward Oracle Cloud metrics and logs to Better Stack.
+stackDescription: Forwards Oracle Cloud metrics and logs to Better Stack.
+informationalText: Run this stack in the home region of your tenancy. It creates a betterstack compartment with a forwarder Function and Connector Hubs.
+logoUrl: https://raw.githubusercontent.com/BetterStackHQ/oci/main/logo.png
 schemaVersion: 1.1.0
-version: "20261109"
+version: "20261110"
 locale: en
 
 variableGroups:
@@ -116,3 +119,11 @@ variables:
     type: text
     multiline: true
     required: false
+
+outputs:
+  betterstack_sources_url:
+    type: link
+    title: View in Better Stack
+    visible: true
+
+primaryOutputButton: ${betterstack_sources_url}

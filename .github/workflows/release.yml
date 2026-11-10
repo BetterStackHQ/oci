@@ -1,0 +1,18 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  stack:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: forwarder/build.sh
+      - run: zip betterstack-oci.zip main.tf variables.tf schema.yaml forwarder.zip
+      - run: gh release create "$GITHUB_REF_NAME" betterstack-oci.zip --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

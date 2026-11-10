@@ -305,7 +305,11 @@ resource "oci_sch_service_connector" "logs" {
   depends_on = [oci_identity_policy.connectors]
 }
 
-# Resource Manager shows the Application information tab, with this as its button, only when the stack has an output.
+# Resource Manager's Application information tab lists the outputs other than its button, and stays hidden with none.
 output "betterstack_sources_url" {
   value = "https://telemetry.betterstack.com/team/0/sources"
+}
+
+output "betterstack_compartment_id" {
+  value = oci_identity_compartment.betterstack.id
 }

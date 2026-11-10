@@ -15,7 +15,7 @@ Before you start, sign in to the **home region** of your tenancy. Use a user who
 1. [Create an Oracle Cloud source in Better Stack](https://telemetry.betterstack.com/team/0/sources/new?platform=oracle_cloud).
 2. On the **Ingest** tab of the source, click **Deploy to Oracle Cloud**.
 3. Accept the Oracle Terms of Use and click **Next**.
-4. Paste the **Source token** of your source and click **Next**. The **Ingesting host** is already filled in.
+4. The **Ingesting host** and **Source token** are already filled in. Click **Next**.
 5. Make sure that **Run apply** is selected, then click **Create**.
 
 The stack creates a compartment with the name `betterstack`. If your tenancy already has a compartment with this name, remove or rename it first.

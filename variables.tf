@@ -24,11 +24,12 @@ variable "betterstack_source_token" {
 variable "metrics_compartment_ids" {
   type        = string
   default     = ""
-  description = "Compartment OCIDs to forward metrics from, separated by commas or new lines. Leave empty for every compartment in the tenancy."
+  description = "Compartment OCIDs to forward metrics from, separated by commas or new lines. Leave empty for every compartment that exists when you apply. Apply again after you add compartments."
 }
 
 variable "metrics_namespaces" {
-  type = list(string)
+  type        = list(string)
+  description = "Metric namespaces to forward from each compartment, including services you start using later. Fewer namespaces need fewer Connector Hubs."
   default = [
     "oci_autonomous_database",
     "oci_blockstore",

@@ -10,7 +10,7 @@ Better Stack never connects to your tenancy. Data leaves your tenancy only throu
 
 ## Quick start
 
-Before you start, sign in to the **home region** of your tenancy. Use a user who can create compartments and policies in the root compartment.
+Before you start, sign in to the **home region** of your tenancy. Use a user who can create compartments and policies in the root compartment, and read service limits (`inspect limits in tenancy`). Administrators can do both.
 
 1. [Create an Oracle Cloud source in Better Stack](https://telemetry.betterstack.com/team/0/sources/new?platform=oracle_cloud).
 2. On the **Ingest** tab of the source, click **Deploy to Oracle Cloud**.
@@ -26,10 +26,18 @@ The stack sends metrics and logs from the home region only.
 
 - A `betterstack` compartment for all the resources below.
 - A Function application for the forwarder. It runs in a VCN with a private subnet. A NAT gateway lets the Function reach Better Stack.
-- One Connector Hub for logs, and one or more Connector Hubs for metrics. Each Connector Hub takes up to 5 compartments and 50 metric namespaces. A large tenancy can need a higher Connector Hub service limit.
+- One Connector Hub for logs, and one or more Connector Hubs for metrics. Each Connector Hub takes up to 5 compartments and 50 metric namespaces, so it covers 2 compartments with the 25 default namespaces, and 5 with 10 or fewer. If your region's Connector Hub limit is too low, Plan stops before anything changes, but it doesn't count Connector Hubs you already use elsewhere in the region. Deselect namespaces, list the compartments to forward metrics from, or request a limit increase.
 - A policy that lets the Connector Hubs read metrics and logs, and call the Function.
 
-When the stack runs, it finds the compartments that have metrics in the selected namespaces. After you add compartments or use new services, apply the stack again.
+Every selected namespace is forwarded from each compartment: the ones you list, or every compartment that exists when you apply. Services you start using later are forwarded without running Apply again. After you add compartments, apply the stack again.
+
+## Upgrade
+
+1. Go to **Developer Services → Resource Manager → Stacks** and select the Better Stack stack.
+2. Click **Edit**, upload `betterstack-oci.zip` from the latest release, and save.
+3. Click **Apply**.
+
+Since v0.1.3, each compartment takes a place on a Connector Hub, even when it has no metrics yet. An upgrade from v0.1.2 can need more Connector Hubs than before. For example, the root compartment and 2 empty subcompartments need 3 on a limit of 2. If Plan stops, deselect namespaces to 10 or fewer, list the compartments to forward metrics from, or request a limit increase.
 
 ## Uninstall
 

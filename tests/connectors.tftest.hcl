@@ -268,3 +268,36 @@ run "over_the_connector_limit_with_log_groups_only" {
 
   expect_failures = [oci_identity_policy.connectors]
 }
+
+run "every_namespace_in_every_compartment" {
+  command = plan
+
+  override_data {
+    target = data.oci_identity_compartments.all
+    values = { compartments = [{ id = "ocid1.compartment.oc1..c1", name = "c1" }] }
+  }
+
+  assert {
+    condition     = alltrue([for s in oci_sch_service_connector.metrics[0].source[0].monitoring_sources : length(s.namespace_details[0].namespaces) == length(var.metrics_namespaces)]) && [for s in oci_sch_service_connector.metrics[0].source[0].monitoring_sources : s.compartment_id] == ["ocid1.tenancy.oc1..root", "ocid1.compartment.oc1..c1"]
+    error_message = "Expected every namespace in root and c1."
+  }
+}
+
+# 6 compartments × 5 namespaces fit the 50-namespace budget, but a connector takes at most 5 compartments.
+run "compartments_6_namespaces_5" {
+  command = plan
+
+  variables {
+    metrics_namespaces = ["oci_blockstore", "oci_computeagent", "oci_lbaas", "oci_objectstorage", "oci_vcn"]
+  }
+
+  override_data {
+    target = data.oci_identity_compartments.all
+    values = { compartments = [{ id = "ocid1.compartment.oc1..c1", name = "c1" }, { id = "ocid1.compartment.oc1..c2", name = "c2" }, { id = "ocid1.compartment.oc1..c3", name = "c3" }, { id = "ocid1.compartment.oc1..c4", name = "c4" }, { id = "ocid1.compartment.oc1..c5", name = "c5" }] }
+  }
+
+  assert {
+    condition     = length(oci_sch_service_connector.metrics) == 2
+    error_message = "Expected 2 metrics connectors."
+  }
+}

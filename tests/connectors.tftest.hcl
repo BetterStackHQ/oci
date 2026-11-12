@@ -241,3 +241,30 @@ run "no_connector_limit_returned" {
     values = { limit_values = [] }
   }
 }
+
+# Root + 3 subcompartments with a log group but no audit logs: 2 metrics connectors + logs = 3.
+run "over_the_connector_limit_with_log_groups_only" {
+  command = plan
+
+  variables {
+    forward_audit_logs = false
+    log_group_ids      = "ocid1.loggroup.oc1..g1"
+  }
+
+  override_data {
+    target = data.oci_identity_compartments.all
+    values = { compartments = [{ id = "ocid1.compartment.oc1..c1", name = "c1" }, { id = "ocid1.compartment.oc1..c2", name = "c2" }, { id = "ocid1.compartment.oc1..c3", name = "c3" }] }
+  }
+
+  override_data {
+    target = data.oci_logging_log_group.selected
+    values = { compartment_id = "ocid1.compartment.oc1..c1" }
+  }
+
+  override_data {
+    target = data.oci_limits_limit_values.connectors
+    values = { limit_values = [{ value = 2 }] }
+  }
+
+  expect_failures = [oci_identity_policy.connectors]
+}

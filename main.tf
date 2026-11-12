@@ -62,6 +62,15 @@ resource "oci_identity_policy" "connectors" {
     "Allow any-user to use fn-function in compartment id ${oci_identity_compartment.betterstack.id} ${local.connector_principal}",
     "Allow any-user to use fn-invocation in compartment id ${oci_identity_compartment.betterstack.id} ${local.connector_principal}",
   ])
+
+  # The policy comes before every connector, so this stops Plan before anything changes.
+  lifecycle {
+    # ponytail: compares against the whole regional limit and ignores Connector Hubs the tenancy already uses elsewhere; subtract the used count (oci_limits_resource_availability) if that bites.
+    precondition {
+      condition     = local.connector_count <= local.connector_limit
+      error_message = "The stack needs ${local.connector_count} Connector Hubs, and your region allows ${local.connector_limit}. Deselect metric namespaces, list the compartments to forward metrics from, or request a Connector Hub limit increase."
+    }
+  }
 }
 
 # The Function has no public IP, so it reaches Better Stack through a NAT gateway.
@@ -175,7 +184,7 @@ resource "oci_functions_function" "forwarder" {
 }
 
 # A monitoring source only covers its own compartment, not its children, so
-# every compartment with metrics in a selected namespace becomes a source.
+# every compartment becomes a source. Compartments added later need Apply again.
 data "oci_identity_compartments" "all" {
   compartment_id            = var.tenancy_ocid
   compartment_id_in_subtree = true
@@ -188,33 +197,23 @@ locals {
     [var.tenancy_ocid],
     [for compartment in data.oci_identity_compartments.all.compartments : compartment.id if compartment.name != "betterstack"],
   )
+
+  # Every compartment gets every selected namespace, so a service first used
+  # later is forwarded without Apply. A connector takes at most 5 compartments
+  # and 50 namespaces across them.
+  metric_connectors = length(var.metrics_namespaces) == 0 ? [] : chunklist(
+    local.metrics_compartment_ids,
+    min(5, floor(50 / length(var.metrics_namespaces))),
+  )
+  connector_count = length(local.metric_connectors) + (var.forward_audit_logs || length(local.log_group_ids) > 0 ? 1 : 0)
+  connector_limit = data.oci_limits_limit_values.connectors.limit_values[0].value
 }
 
-data "oci_monitoring_metrics" "namespaces" {
-  for_each = toset(local.metrics_compartment_ids)
-
-  compartment_id = each.value
-  group_by       = ["namespace"]
-}
-
-locals {
-  metric_sources = [
-    for id in local.metrics_compartment_ids : {
-      compartment_id = id
-      namespaces     = sort(setintersection(var.metrics_namespaces, data.oci_monitoring_metrics.namespaces[id].metrics[*].namespace))
-    } if length(setintersection(var.metrics_namespaces, data.oci_monitoring_metrics.namespaces[id].metrics[*].namespace)) > 0
-  ]
-
-  # A connector takes at most 5 compartments and 50 namespaces across them, so
-  # compartments are packed with others that select as many namespaces: one
-  # compartment with many namespaces doesn't shrink every other connector.
-  metric_source_sizes = sort(distinct([for source in local.metric_sources : format("%02d", length(source.namespaces))]))
-  metric_connectors = concat([], [
-    for size in local.metric_source_sizes : chunklist(
-      [for source in local.metric_sources : source if length(source.namespaces) == tonumber(size)],
-      min(5, floor(50 / tonumber(size))),
-    )
-  ]...)
+data "oci_limits_limit_values" "connectors" {
+  compartment_id = var.tenancy_ocid
+  service_name   = "service-connector-hub"
+  name           = "service-connector-count"
+  scope_type     = "REGION"
 }
 
 resource "oci_sch_service_connector" "metrics" {
@@ -230,13 +229,13 @@ resource "oci_sch_service_connector" "metrics" {
       for_each = local.metric_connectors[count.index]
 
       content {
-        compartment_id = monitoring_sources.value.compartment_id
+        compartment_id = monitoring_sources.value
 
         namespace_details {
           kind = "selected"
 
           dynamic "namespaces" {
-            for_each = monitoring_sources.value.namespaces
+            for_each = var.metrics_namespaces
 
             content {
               namespace = namespaces.value

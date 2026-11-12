@@ -26,7 +26,7 @@ The stack sends metrics and logs from the home region only.
 
 - A `betterstack` compartment for all the resources below.
 - A Function application for the forwarder. It runs in a VCN with a private subnet. A NAT gateway lets the Function reach Better Stack.
-- One Connector Hub for logs, and one or more Connector Hubs for metrics. Each Connector Hub takes up to 5 compartments and 50 metric namespaces, so it covers 2 compartments with all 25 namespaces selected, and 5 with 10 or fewer. If your region's Connector Hub limit is too low, Plan stops before anything changes. Deselect namespaces, list the compartments to forward metrics from, or request a limit increase.
+- One Connector Hub for logs, and one or more Connector Hubs for metrics. Each Connector Hub takes up to 5 compartments and 50 metric namespaces, so it covers 2 compartments with the 25 default namespaces, and 5 with 10 or fewer. If your region's Connector Hub limit is too low, Plan stops before anything changes. Deselect namespaces, list the compartments to forward metrics from, or request a limit increase.
 - A policy that lets the Connector Hubs read metrics and logs, and call the Function.
 
 Every selected namespace is forwarded from each compartment: the ones you list, or every compartment that exists when you apply. Services you start using later are forwarded without running Apply again. After you add compartments, apply the stack again.

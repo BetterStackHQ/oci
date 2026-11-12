@@ -301,3 +301,21 @@ run "compartments_6_namespaces_5" {
     error_message = "Expected 2 metrics connectors."
   }
 }
+
+run "listed_compartments_only" {
+  command = plan
+
+  variables {
+    metrics_compartment_ids = "ocid1.compartment.oc1..c1, ocid1.compartment.oc1..c2"
+  }
+
+  override_data {
+    target = data.oci_identity_compartments.all
+    values = { compartments = [{ id = "ocid1.compartment.oc1..c1", name = "c1" }, { id = "ocid1.compartment.oc1..c2", name = "c2" }, { id = "ocid1.compartment.oc1..c3", name = "c3" }] }
+  }
+
+  assert {
+    condition     = length(oci_sch_service_connector.metrics) == 1 && [for s in oci_sch_service_connector.metrics[0].source[0].monitoring_sources : s.compartment_id] == ["ocid1.compartment.oc1..c1", "ocid1.compartment.oc1..c2"]
+    error_message = "Expected 1 metrics connector with c1 and c2 only."
+  }
+}

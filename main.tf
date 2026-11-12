@@ -63,7 +63,7 @@ resource "oci_identity_policy" "connectors" {
     "Allow any-user to use fn-invocation in compartment id ${oci_identity_compartment.betterstack.id} ${local.connector_principal}",
   ])
 
-  # The policy comes before every connector, so this stops Plan before anything changes.
+  # A failed precondition stops Plan, so nothing changes.
   lifecycle {
     # ponytail: compares against the whole regional limit and ignores Connector Hubs the tenancy already uses elsewhere; subtract the used count (oci_limits_resource_availability) if that bites.
     precondition {
@@ -206,7 +206,8 @@ locals {
     min(5, floor(50 / length(var.metrics_namespaces))),
   )
   connector_count = length(local.metric_connectors) + (var.forward_audit_logs || length(local.log_group_ids) > 0 ? 1 : 0)
-  connector_limit = data.oci_limits_limit_values.connectors.limit_values[0].value
+  # With no limit returned, the check compares the count with itself and passes.
+  connector_limit = coalesce(try(data.oci_limits_limit_values.connectors.limit_values[0].value, null), local.connector_count)
 }
 
 data "oci_limits_limit_values" "connectors" {

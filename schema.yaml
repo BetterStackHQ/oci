@@ -50,7 +50,7 @@ variables:
 
   metrics_namespaces:
     title: Metric namespaces
-    description: Forwarded from every compartment, including services you start using later. Each Connector Hub covers 2 compartments with all 25 namespaces, and 5 with 10 or fewer. Clear the list to forward logs only.
+    description: Forwarded from each compartment above, including services you start using later. Each Connector Hub covers 2 compartments with all 25 namespaces, and 5 with 10 or fewer. Clear the list to forward logs only.
     type: enum
     additionalProps:
       allowMultiple: true

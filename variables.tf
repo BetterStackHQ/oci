@@ -29,7 +29,7 @@ variable "metrics_compartment_ids" {
 
 variable "metrics_namespaces" {
   type        = list(string)
-  description = "Metric namespaces to forward from every compartment, including services you start using later. Fewer namespaces need fewer Connector Hubs."
+  description = "Metric namespaces to forward from each compartment, including services you start using later. Fewer namespaces need fewer Connector Hubs."
   default = [
     "oci_autonomous_database",
     "oci_blockstore",
